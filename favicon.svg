@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Fondo circular con gradiente -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#A8A4FF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8B7FFF;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="letterGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F0F0FF;stop-opacity:0.95" />
+    </linearGradient>
+  </defs>
+
+  <!-- Círculo de fondo -->
+  <circle cx="32" cy="32" r="30" fill="url(#bgGradient)"/>
+
+  <!-- Sombra interna sutil -->
+  <circle cx="32" cy="32" r="30" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+
+  <!-- Letra P estilizada -->
+  <path d="M 24 18 L 24 46 L 28 46 L 28 34 L 38 34 C 42 34 45 31 45 27 C 45 23 42 20 38 20 L 28 20 L 28 18 Z M 28 24 L 37 24 C 39.5 24 41 25.5 41 27 C 41 28.5 39.5 30 37 30 L 28 30 Z"
+        fill="url(#letterGradient)"
+        stroke="rgba(139,127,255,0.3)"
+        stroke-width="0.5"/>
+</svg>

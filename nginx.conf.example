@@ -1,0 +1,26 @@
+# Ejemplo de configuración para Nginx como proxy reverso
+# Colocar en /etc/nginx/sites-available/sistema-guardias
+
+server {
+    listen 80;
+    server_name guardias.tu-dominio.com;  # Cambiar por tu dominio o IP
+
+    location / {
+        proxy_pass http://sistema-guardias:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Headers adicionales para Flask
+        proxy_buffering off;
+        proxy_cache off;
+    }
+
+    # Servir archivos estáticos directamente (opcional)
+    location /static/ {
+        proxy_pass http://sistema-guardias:5000;
+        proxy_cache_valid 200 1d;
+        add_header Cache-Control "public, immutable";
+    }
+}
