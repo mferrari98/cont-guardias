@@ -1,6 +1,5 @@
-# Archivos de configuración con datos reales
+# Archivo de configuración con datos personales
 .env
-config.py
 
 # Python
 __pycache__/
