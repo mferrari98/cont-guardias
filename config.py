@@ -9,7 +9,7 @@ GUARDIA_REFERENCIA = os.getenv('GUARDIA_REFERENCIA', 'Juan')
 
 # Configuración FIJA (no necesita ser configurada)
 DURACION_GUARDIA = 14  # Días por guardia
-SECRET_KEY = 'sistema-guardias-rotativas-2025'  # Clave fija para esta instancia
+SECRET_KEY = os.getenv('SECRET_KEY', 'sistema-guardias-rotativas-2025-defecto')  # Clave configurable
 DEBUG = False  # Siempre False en producción
 HOST = '0.0.0.0'
 PORT = 5000
