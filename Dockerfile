@@ -1,32 +1,32 @@
-# Usar una imagen base de Python Alpine más ligera
+# Imagen minimalista Flask - sin curl ni herramientas extra
 FROM python:3.12-alpine
 
-# Establecer el directorio de trabajo
 WORKDIR /app
 
-# Instalar dependencias del sistema necesarias para Pillow y curl
-RUN apk add --no-cache \
-    jpeg-dev \
-    zlib-dev \
-    musl-dev \
-    gcc \
-    curl \
-    && rm -rf /var/cache/apk/*
-
-# Copiar el archivo de requisitos y instalar dependencias de Python
+# Copiar requirements primero para mejor cache
 COPY requirements.txt .
+
+# Instalar dependencias Python --no-cache-dir y --no-deps donde sea posible
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar el código de la aplicación
-COPY . .
+# Copiar solo archivos necesarios
+COPY app.py wsgi.py config.py constants.py ./
 
-# Exponer el puerto en el que corre la aplicación
+# Copiar templates y static
+COPY templates/ templates/
+COPY static/ static/
+
+# Exponer el puerto
 EXPOSE 5000
 
-# Variables de entorno por defecto
+# Variables de entorno minimalistas
 ENV FLASK_APP=app.py
 ENV FLASK_ENV=production
 ENV PYTHONUNBUFFERED=1
 
-# Comando para ejecutar la aplicación con Gunicorn (menos workers para Alpine)
-CMD ["gunicorn", "--workers", "2", "--bind", "0.0.0.0:5000", "wsgi:app"]
+# Health check sin curl (usando wget incluido en Alpine)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1
+
+# Comando optimizado: 1 worker para Alpine (usa menos memoria)
+CMD ["gunicorn", "--workers", "1", "--threads", "2", "--bind", "0.0.0.0:5000", "wsgi:app"]
