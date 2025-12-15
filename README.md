@@ -1,54 +1,14 @@
-# Sistema de Guardias Rotativas
+# Sistema de Guardias
 
-Sistema web para gestionar cronograma de guardias. Dockerizado con opción de red compartida.
+Aplicación web backend desarrollada en Flask para gestionar el cronograma de guardias rotativas del personal.
 
-## Requisitos
-- Docker y Docker Compose
-- Git
+## ¿Qué es?
+Sistema que automatiza la organización y seguimiento de turnos de guardia, permitiendo configurar participantes, duración y fechas de referencia.
 
-## Instalación
-```bash
-git clone <URL>
-cd sistema-guardias-rotativas
-cp .env.example .env
-nano .env
-```
+## ¿Cómo funciona?
+- **Framework**: Flask 3.0.0 como servidor web
+- **Servidor WSGI**: Gunicorn 21.2.0 para producción
+- **Configuración**: Variables de entorno para personalizar guardias y duración
+- **Arquitectura**: Aplicación Flask tradicional con templates y archivos estáticos
 
-## Despliegue
-
-### Opción 1: Individual (puerto 8080)
-```bash
-./deploy.sh standalone
-# o
-docker-compose -f docker-compose.standalone.yml up --build
-```
-Acceso: http://localhost:8080
-
-### Opción 2: Producción con Nginx
-```bash
-./deploy.sh production
-```
-- Acceso vía proxy Nginx
-- Red interna: `proyectos_network`
-- Ver `nginx.conf.example` para configuración
-
-## Configuración (.env)
-```bash
-CELULAR_CORPORATIVO=tu_teléfono
-GUARDIAS=Nombre1,Nombre2,Nombre3,Nombre4
-FECHA_REFERENCIA=2025-01-07
-GUARDIA_REFERENCIA=Nombre1
-DURACION_GUARDIA=14
-SECRET_KEY=tu_clave_secreta
-```
-
-## Tecnologías
-- Flask (Python)
-- Docker + Docker Compose
-- Gunicorn
-
-## Comandos Útiles
-```bash
-docker-compose -f docker-compose.standalone.yml logs -f
-docker-compose -f docker-compose.production.yml down
-```
+La aplicación genera automáticamente cronogramas de guardias basados en una lista de participantes y una duración configurable. Se ejecuta en el puerto interno 5000 del contenedor y es accedida a través de Nginx en la ruta `/guardias/`.
