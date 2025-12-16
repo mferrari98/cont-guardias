@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cronograma de Guardias</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='b' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' style='stop-color:%23A8A4FF'/><stop offset='100%25' style='stop-color:%238B7FFF'/></linearGradient><linearGradient id='l' x1='0%25' y1='0%25' x2='0%25' y2='100%25'><stop offset='0%25' style='stop-color:%23FFFFFF'/><stop offset='100%25' style='stop-color:%23F0F0FF;stop-opacity:0.95'/></linearGradient></defs><circle cx='32' cy='32' r='30' fill='url(%23b)'/><circle cx='32' cy='32' r='30' fill='none' stroke='rgba(255,255,255,0.2)' stroke-width='1'/><path d='M 24 18 L 24 46 L 28 46 L 28 34 L 38 34 C 42 34 45 31 45 27 C 45 23 42 20 38 20 L 28 20 L 28 18 Z M 28 24 L 37 24 C 39.5 24 41 25.5 41 27 C 41 28.5 39.5 30 37 30 L 28 30 Z' fill='url(%23l)' stroke='rgba(139,127,255,0.3)' stroke-width='0.5'/></svg>">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/guardias.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/guardias.min.css') }}">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
@@ -185,6 +185,6 @@
             });
         }
     </script>
-    <script src="{{ url_for('static', filename='js/guardias.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/guardias.min.js') }}"></script>
 </body>
 </html>
