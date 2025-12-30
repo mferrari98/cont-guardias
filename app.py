@@ -196,6 +196,28 @@ app.config.from_object('config')
 # Configurar APPLICATION_ROOT para que url_for() genere URLs correctas
 app.config['APPLICATION_ROOT'] = '/guardias'
 
+CSP_POLICY = (
+    "default-src 'self'; "
+    "script-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob:; "
+    "font-src 'self' data:; "
+    "connect-src 'self'; "
+    "object-src 'none'; "
+    "base-uri 'self'; "
+    "frame-ancestors 'self'; "
+    "form-action 'self'"
+)
+
+@app.after_request
+def set_security_headers(response):
+    response.headers['Content-Security-Policy'] = CSP_POLICY
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Referrer-Policy'] = 'no-referrer'
+    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+    return response
+
 # Mapeo de códigos WMO a emojis de clima
 WEATHER_EMOJI = {
     0: '☀️',      # Despejado
