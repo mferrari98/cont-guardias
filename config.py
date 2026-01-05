@@ -1,18 +1,41 @@
 import os
+import logging
 from datetime import datetime
+
+logger = logging.getLogger("sistema_guardias")
 
 # Datos que se configurarán desde .env (únicos datos sensibles/variables)
 CELULAR_CORPORATIVO = os.getenv('CELULAR_CORPORATIVO', '+54 280 123-4567')
-GUARDIAS = [g.strip() for g in os.getenv('GUARDIAS', 'Juan,Pedro,Maria,Ana').split(',') if g.strip()]
-FECHA_REFERENCIA = os.getenv('FECHA_REFERENCIA', '2025-01-07')
+DEFAULT_GUARDIAS = 'Juan,Pedro,Maria,Ana'
+GUARDIAS = [g.strip() for g in os.getenv('GUARDIAS', DEFAULT_GUARDIAS).split(',') if g.strip()]
+if not GUARDIAS:
+    GUARDIAS = [g.strip() for g in DEFAULT_GUARDIAS.split(',') if g.strip()]
+
+FECHA_REFERENCIA_RAW = os.getenv('FECHA_REFERENCIA', '2025-01-07')
+FECHA_REFERENCIA = FECHA_REFERENCIA_RAW
 GUARDIA_REFERENCIA = os.getenv('GUARDIA_REFERENCIA', 'Juan')
+if GUARDIA_REFERENCIA not in GUARDIAS:
+    logger.warning('GUARDIA_REFERENCIA invalida: %s. Usando %s', GUARDIA_REFERENCIA, GUARDIAS[0])
+    GUARDIA_REFERENCIA = GUARDIAS[0]
+
+try:
+    FECHA_REFERENCIA_DATE = datetime.strptime(FECHA_REFERENCIA_RAW, '%Y-%m-%d').date()
+except ValueError:
+    logger.warning('FECHA_REFERENCIA invalida: %s. Usando 2025-01-07', FECHA_REFERENCIA_RAW)
+    FECHA_REFERENCIA_DATE = datetime.strptime('2025-01-07', '%Y-%m-%d').date()
+    FECHA_REFERENCIA = '2025-01-07'
 
 # Configuración FIJA (no necesita ser configurada)
 DURACION_GUARDIA = 14  # Días por guardia
-SECRET_KEY = os.getenv('SECRET_KEY', 'sistema-guardias-rotativas-2025-defecto')  # Clave configurable
-DEBUG = False  # Siempre False en producción
+DEFAULT_SECRET_KEY = 'sistema-guardias-rotativas-2025-defecto'
+SECRET_KEY = os.getenv('SECRET_KEY', DEFAULT_SECRET_KEY)  # Clave configurable
+ADMIN_API_TOKEN = os.getenv('ADMIN_API_TOKEN', '')  # Token opcional para endpoints admin
+DEBUG = os.getenv('DEBUG', 'false').lower() == 'true'
 HOST = '0.0.0.0'
 PORT = 5000
+
+if not DEBUG and SECRET_KEY == DEFAULT_SECRET_KEY:
+    logger.warning('SECRET_KEY por defecto en uso. Configurar SECRET_KEY en .env')
 
 # Calcular índice de guardia de referencia automáticamente
 try:

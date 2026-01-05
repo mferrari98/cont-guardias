@@ -1,19 +1,27 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 from datetime import datetime, date, timedelta
 import calendar
+import logging
 import requests
 from config import *
 from constants import *
 from threading import Lock
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 import time
+
+logger = logging.getLogger("sistema_guardias")
+if not logger.handlers:
+    level = logging.DEBUG if DEBUG else logging.INFO
+    logging.basicConfig(level=level, format="%(asctime)s [%(levelname)s] %(message)s")
 
 # Cache simple para clima (válido por 6 horas)
 CACHE_CLIMA = {
     'data': {},
     'timestamp': 0,
-    'duracion': 6 * 60 * 60  # 6 horas en segundos
+    'duracion': CLIMA_CACHE_DURATION
 }
+CLIMA_CACHE_LOCK = Lock()
 
 # ============================================
 # SISTEMA DE CACHÉ PARA CALENDARIOS
@@ -40,7 +48,7 @@ class CalendarioCache:
     def __init__(self):
         self.lock = Lock()
         self.cache = {}  # {año: {data, timestamp}}
-        self.duracion = 3600  # 1 hora en segundos
+        self.duracion = CALENDARIO_CACHE_DURATION
         self.total_hits = 0
         self.total_misses = 0
 
@@ -54,11 +62,11 @@ class CalendarioCache:
                 # Verificar si el caché es válido
                 if ahora - cache_entry['timestamp'] < self.duracion:
                     self.total_hits += 1
-                    print(f"[CACHE HIT] Año {anio} - Hits: {self.total_hits}, Misses: {self.total_misses}")
+                    logger.debug(f"[CACHE HIT] Año {anio} - Hits: {self.total_hits}, Misses: {self.total_misses}")
                     return cache_entry['data']
 
             self.total_misses += 1
-            print(f"[CACHE MISS] Año {anio} - Hits: {self.total_hits}, Misses: {self.total_misses}")
+            logger.debug(f"[CACHE MISS] Año {anio} - Hits: {self.total_hits}, Misses: {self.total_misses}")
             return None
 
     def set(self, anio, data):
@@ -68,7 +76,22 @@ class CalendarioCache:
                 'data': data,
                 'timestamp': time.time()
             }
-            print(f"[CACHE SET] Calendario para año {anio} guardado en caché")
+            logger.info(f"[CACHE SET] Calendario para año {anio} guardado en caché")
+
+            if len(self.cache) > CALENDARIO_CACHE_MAX_ITEMS:
+                oldest_entries = sorted(self.cache.items(), key=lambda item: item[1]['timestamp'])
+                evicted = None
+                for year, _ in oldest_entries:
+                    if year != anio:
+                        evicted = year
+                        break
+
+                if evicted is None and oldest_entries:
+                    evicted = oldest_entries[0][0]
+
+                if evicted is not None:
+                    del self.cache[evicted]
+                    logger.info(f"[CACHE EVICT] Año {evicted} eliminado para mantener tamaño máximo")
 
     def invalidate(self, anio=None):
         """Invalidar caché de un año específico o todo el caché"""
@@ -76,10 +99,10 @@ class CalendarioCache:
             if anio is not None:
                 if anio in self.cache:
                     del self.cache[anio]
-                    print(f"[CACHE INVALIDATE] Año {anio} eliminado del caché")
+                    logger.info(f"[CACHE INVALIDATE] Año {anio} eliminado del caché")
             else:
                 self.cache = {}
-                print(f"[CACHE INVALIDATE] Todo el caché ha sido eliminado")
+                logger.info("[CACHE INVALIDATE] Todo el caché ha sido eliminado")
 
     def get_stats(self):
         """Obtener estadísticas del caché"""
@@ -91,6 +114,8 @@ class CalendarioCache:
                 'hits': self.total_hits,
                 'misses': self.total_misses,
                 'hit_rate': round(hit_rate, 2),
+                'cache_size': len(self.cache),
+                'max_items': CALENDARIO_CACHE_MAX_ITEMS,
                 'cached_years': list(self.cache.keys())
             }
 
@@ -101,6 +126,8 @@ calendario_cache = CalendarioCache()
 # CACHÉ DE FERIADOS (Optimización 12x)
 # ============================================
 FERIADOS_CACHE = {}
+FERIADOS_CACHE_ORDER = []
+FERIADOS_CACHE_LOCK = Lock()
 
 def obtener_feriados_cache(anio):
     """
@@ -108,12 +135,25 @@ def obtener_feriados_cache(anio):
     Esto reduce el tiempo de generación de calendario en ~90%
     """
     # Verificar si ya está en caché
-    if anio in FERIADOS_CACHE:
-        return FERIADOS_CACHE[anio]
+    with FERIADOS_CACHE_LOCK:
+        if anio in FERIADOS_CACHE:
+            return FERIADOS_CACHE[anio]
 
     # Si no está, calcular y guardar en caché
     feriados = obtener_feriados(anio)
-    FERIADOS_CACHE[anio] = feriados
+
+    with FERIADOS_CACHE_LOCK:
+        if anio in FERIADOS_CACHE_ORDER:
+            FERIADOS_CACHE_ORDER.remove(anio)
+        FERIADOS_CACHE_ORDER.append(anio)
+
+        FERIADOS_CACHE[anio] = feriados
+
+        if len(FERIADOS_CACHE_ORDER) > CALENDARIO_CACHE_MAX_ITEMS:
+            oldest = FERIADOS_CACHE_ORDER.pop(0)
+            if oldest in FERIADOS_CACHE:
+                del FERIADOS_CACHE[oldest]
+                logger.debug(f"[FERIADOS CACHE] Año {oldest} eliminado para mantener tamaño máximo")
 
     return feriados
 
@@ -122,22 +162,17 @@ def obtener_clima_open_meteo():
     ahora = time.time()
 
     # Si el cache es válido, retornarlo
-    if CACHE_CLIMA['data'] and (ahora - CACHE_CLIMA['timestamp'] < CACHE_CLIMA['duracion']):
-        print(f"[CLIMA CACHE HIT] Retornando {len(CACHE_CLIMA['data'])} días desde caché")
-        return CACHE_CLIMA['data']
+    with CLIMA_CACHE_LOCK:
+        if CACHE_CLIMA['data'] and (ahora - CACHE_CLIMA['timestamp'] < CACHE_CLIMA['duracion']):
+            logger.debug(f"[CLIMA CACHE HIT] Retornando {len(CACHE_CLIMA['data'])} días desde caché")
+            return CACHE_CLIMA['data']
 
     try:
-        url = "https://api.open-meteo.com/v1/forecast"
-        params = {
-            'latitude': -42.7692,
-            'longitude': -65.0386,
-            'daily': 'weathercode,temperature_2m_max,temperature_2m_min',
-            'timezone': 'America/Argentina/Buenos_Aires',
-            'forecast_days': 7  # Limitado a 7 días
-        }
+        url = CLIMA_CONFIG['url']
+        params = dict(CLIMA_CONFIG['params'])
 
-        print(f"[CLIMA API] Solicitando pronóstico a Open-Meteo...")
-        response = requests.get(url, params=params, timeout=5)
+        logger.info("[CLIMA API] Solicitando pronóstico a Open-Meteo...")
+        response = requests.get(url, params=params, timeout=CLIMA_API_TIMEOUT)
         response.raise_for_status()
         data = response.json()
 
@@ -149,7 +184,7 @@ def obtener_clima_open_meteo():
             temp_max = data['daily'].get('temperature_2m_max', [])
             temp_min = data['daily'].get('temperature_2m_min', [])
 
-            print(f"[CLIMA API] Recibidas {len(fechas)} fechas del API")
+            logger.debug(f"[CLIMA API] Recibidas {len(fechas)} fechas del API")
 
             for i, fecha_str in enumerate(fechas):
                 fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date()
@@ -163,21 +198,29 @@ def obtener_clima_open_meteo():
                 }
                 clima_por_fecha[fecha] = clima_info
 
-            print(f"[CLIMA API] Procesadas {len(clima_por_fecha)} fechas correctamente")
+            logger.info(f"[CLIMA API] Procesadas {len(clima_por_fecha)} fechas correctamente")
+
+        if not clima_por_fecha:
+            logger.warning("[CLIMA API] Respuesta sin datos diarios")
+            with CLIMA_CACHE_LOCK:
+                if CACHE_CLIMA['data']:
+                    logger.warning(f"[CLIMA FALLBACK] Usando caché antiguo con {len(CACHE_CLIMA['data'])} días")
+                    return CACHE_CLIMA['data']
+            return {}
 
         # Actualizar cache
-        CACHE_CLIMA['data'] = clima_por_fecha
-        CACHE_CLIMA['timestamp'] = ahora
+        with CLIMA_CACHE_LOCK:
+            CACHE_CLIMA['data'] = clima_por_fecha
+            CACHE_CLIMA['timestamp'] = ahora
 
         return clima_por_fecha
-    except Exception as e:
-        print(f"[CLIMA ERROR] Error obteniendo clima: {e}")
-        import traceback
-        traceback.print_exc()
+    except Exception:
+        logger.exception("[CLIMA ERROR] Error obteniendo clima")
         # Si falla y hay cache antiguo, usarlo
-        if CACHE_CLIMA['data']:
-            print(f"[CLIMA FALLBACK] Usando caché antiguo con {len(CACHE_CLIMA['data'])} días")
-            return CACHE_CLIMA['data']
+        with CLIMA_CACHE_LOCK:
+            if CACHE_CLIMA['data']:
+                logger.warning(f"[CLIMA FALLBACK] Usando caché antiguo con {len(CACHE_CLIMA['data'])} días")
+                return CACHE_CLIMA['data']
         return {}
 
 # Nombres de meses en español
@@ -192,6 +235,9 @@ DIAS_ES = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom']
 
 app = Flask(__name__)
 app.config.from_object('config')
+
+# Ensure X-Forwarded-* headers are honored behind a proxy
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 # Configurar APPLICATION_ROOT para que url_for() genere URLs correctas
 app.config['APPLICATION_ROOT'] = '/guardias'
@@ -216,35 +262,29 @@ def set_security_headers(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Referrer-Policy'] = 'no-referrer'
     response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+
+    if request.path.startswith('/api/') or request.path == '/health':
+        response.headers['Cache-Control'] = 'no-store'
+
     return response
 
+
+def require_admin_token():
+    if not ADMIN_API_TOKEN:
+        return None
+
+    token = request.headers.get('X-Admin-Token', '')
+    if token != ADMIN_API_TOKEN:
+        return jsonify({
+            'success': False,
+            'error': 'unauthorized',
+            'message': 'Invalid admin token'
+        }), 401
+
+    return None
+
 # Mapeo de códigos WMO a emojis de clima
-WEATHER_EMOJI = {
-    0: '☀️',      # Despejado
-    1: '🌤️',     # Mayormente despejado
-    2: '⛅',     # Parcialmente nublado
-    3: '☁️',     # Nublado
-    45: '🌫️',    # Niebla
-    48: '🌫️',    # Niebla con escarcha
-    51: '🌦️',    # Llovizna ligera
-    53: '🌧️',    # Llovizna moderada
-    55: '🌧️',    # Llovizna densa
-    61: '🌧️',    # Lluvia ligera
-    63: '🌧️',    # Lluvia moderada
-    65: '🌧️',    # Lluvia fuerte
-    71: '🌨️',    # Nieve ligera
-    73: '🌨️',    # Nieve moderada
-    75: '❄️',     # Nieve fuerte
-    77: '❄️',     # Granizo
-    80: '🌦️',    # Chubascos ligeros
-    81: '⛈️',     # Chubascos moderados
-    82: '⛈️',     # Chubascos violentos
-    85: '🌨️',    # Chubascos de nieve ligeros
-    86: '🌨️',    # Chubascos de nieve fuertes
-    95: '⛈️',     # Tormenta
-    96: '⛈️',     # Tormenta con granizo ligero
-    99: '⛈️',     # Tormenta con granizo fuerte
-}
+WEATHER_EMOJI = CLIMA_EMOJIS
 
 
 def calcular_semana_santa(anio):
@@ -321,7 +361,7 @@ def obtener_feriados(anio):
 
 def calcular_guardia(fecha):
     """Calcula qué guardia corresponde a una fecha dada"""
-    ref = datetime.strptime(FECHA_REFERENCIA, '%Y-%m-%d').date()
+    ref = FECHA_REFERENCIA_DATE
 
     if fecha >= ref:
         dias = (fecha - ref).days
@@ -339,7 +379,7 @@ def obtener_guardia_actual():
     guardia_actual = calcular_guardia(hoy)
 
     # Encontrar el inicio y fin de la guardia actual
-    ref = datetime.strptime(FECHA_REFERENCIA, '%Y-%m-%d').date()
+    ref = FECHA_REFERENCIA_DATE
 
     dias_desde_ref = (hoy - ref).days
     periodo_actual = dias_desde_ref // DURACION_GUARDIA
@@ -481,15 +521,15 @@ def index():
 
     # Si no está en caché, generar y cachear
     if calendario_data is None:
-        print(f"[GENERANDO] Calendario para año {anio_actual} (Petición de cliente)...")
+        logger.info(f"[GENERANDO] Calendario para año {anio_actual} (Petición de cliente)...")
         inicio = time.time()
         calendario_data = generar_calendario_completo(anio_actual)
         calendario_cache.set(anio_actual, calendario_data)
         duracion = time.time() - inicio
-        print(f"[CACHE SET] Calendario para año {anio_actual} guardado en caché")
-        print(f"[GENERADO] Calendario para año {anio_actual} en {duracion:.3f}s")
+        logger.info(f"[CACHE SET] Calendario para año {anio_actual} guardado en caché")
+        logger.info(f"[GENERADO] Calendario para año {anio_actual} en {duracion:.3f}s")
     else:
-        print(f"[CACHE HIT] Sirviendo año {anio_actual} desde caché (Petición de cliente)")
+        logger.debug(f"[CACHE HIT] Sirviendo año {anio_actual} desde caché (Petición de cliente)")
 
     return render_template('index.html',
                          meses_data=calendario_data['meses_data'],
@@ -510,14 +550,14 @@ def ver_anio(anio):
 
     # Si no está en caché, generar y cachear
     if calendario_data is None:
-        print(f"[GENERANDO] Calendario para año {anio}...")
+        logger.info(f"[GENERANDO] Calendario para año {anio}...")
         inicio = time.time()
         calendario_data = generar_calendario_completo(anio)
         calendario_cache.set(anio, calendario_data)
         duracion = time.time() - inicio
-        print(f"[GENERADO] Calendario para año {anio} en {duracion:.3f}s")
+        logger.info(f"[GENERADO] Calendario para año {anio} en {duracion:.3f}s")
     else:
-        print(f"[CACHE HIT] Sirviendo año {anio} desde caché")
+        logger.debug(f"[CACHE HIT] Sirviendo año {anio} desde caché")
 
     return render_template('index.html',
                          meses_data=calendario_data['meses_data'],
@@ -533,32 +573,31 @@ def ver_anio(anio):
 def obtener_clima():
     """Endpoint API para obtener pronóstico del clima bajo demanda"""
     try:
-        print(f"[API CLIMA] Cliente solicitando pronóstico del clima")
+        logger.info("[API CLIMA] Cliente solicitando pronóstico del clima")
         clima_por_fecha = obtener_clima_open_meteo()
 
-        print(f"[API CLIMA] obtener_clima_open_meteo() retornó {len(clima_por_fecha)} registros")
-        print(f"[API CLIMA] Tipo de datos: {type(clima_por_fecha)}")
+        logger.debug(f"[API CLIMA] obtener_clima_open_meteo() retornó {len(clima_por_fecha)} registros")
+        logger.debug(f"[API CLIMA] Tipo de datos: {type(clima_por_fecha)}")
 
         if clima_por_fecha:
-            print(f"[API CLIMA] Primera clave: {list(clima_por_fecha.keys())[0]} (tipo: {type(list(clima_por_fecha.keys())[0])})")
+            primera_clave = list(clima_por_fecha.keys())[0]
+            logger.debug(f"[API CLIMA] Primera clave: {primera_clave} (tipo: {type(primera_clave)})")
 
         # Convertir fechas a strings para JSON
         clima_serializable = {}
         for fecha, clima_info in clima_por_fecha.items():
             fecha_str = fecha.strftime('%Y-%m-%d')
             clima_serializable[fecha_str] = clima_info
-            print(f"[API CLIMA] Convertido: {fecha_str} → {clima_info}")
+            logger.debug(f"[API CLIMA] Convertido: {fecha_str} -> {clima_info}")
 
-        print(f"[API CLIMA] Enviando {len(clima_serializable)} registros al cliente")
+        logger.info(f"[API CLIMA] Enviando {len(clima_serializable)} registros al cliente")
 
         return jsonify({
             'success': True,
             'clima': clima_serializable
         })
     except Exception as e:
-        print(f"[API CLIMA ERROR] {e}")
-        import traceback
-        traceback.print_exc()
+        logger.exception("[API CLIMA ERROR] Error procesando pronóstico")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -567,6 +606,10 @@ def obtener_clima():
 @app.route('/api/cache/stats')
 def cache_stats():
     """Endpoint para ver estadísticas del caché"""
+    auth_error = require_admin_token()
+    if auth_error:
+        return auth_error
+
     stats = calendario_cache.get_stats()
     return jsonify({
         'success': True,
@@ -577,6 +620,10 @@ def cache_stats():
 @app.route('/api/cache/invalidate', methods=['POST'])
 def cache_invalidate():
     """Endpoint para invalidar el caché (útil para desarrollo)"""
+    auth_error = require_admin_token()
+    if auth_error:
+        return auth_error
+
     calendario_cache.invalidate()
     return jsonify({
         'success': True,

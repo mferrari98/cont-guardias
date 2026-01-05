@@ -32,6 +32,10 @@ FERIADOS_CHUBUT = [
 ]
 
 # Configuración de API de clima
+CALENDARIO_CACHE_DURATION = 60 * 60
+CALENDARIO_CACHE_MAX_ITEMS = 6
+CLIMA_CACHE_DURATION = 6 * 60 * 60
+CLIMA_API_TIMEOUT = 5
 CLIMA_CONFIG = {
     'url': 'https://api.open-meteo.com/v1/forecast',
     'params': {
