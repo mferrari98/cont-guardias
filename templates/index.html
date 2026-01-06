@@ -60,7 +60,7 @@
         <div class="leyenda-info-row">
             <!-- Grupo 1: Botón pronóstico (izquierda) -->
             <div class="grupo-izquierda">
-                <button id="btn-clima" class="btn-clima-rect" onclick="solicitarPronostico()" title="Cargar pronóstico del tiempo">
+                <button id="btn-clima" class="btn-clima-rect" onclick="solicitarPronostico()" title="Cargar pronóstico del tiempo" data-clima-url="{{ url_for('obtener_clima') }}">
                     <span class="btn-clima-text">Solicitar Pronóstico</span>
                 </button>
             </div>
@@ -163,17 +163,17 @@
         function descargarCalendario() {
             const elemento = document.getElementById('calendario-captura');
             const btnDownload = document.querySelector('.btn-download');
-            
+
             btnDownload.textContent = 'Generando...';
             btnDownload.disabled = true;
-            
+
             const wrapper = document.createElement('div');
             wrapper.style.cssText = `
                 background: ${getComputedStyle(elemento).backgroundColor};
                 padding: 20px;
                 display: inline-block;
             `;
-            
+
             const titulo = document.createElement('h2');
             titulo.textContent = 'Cronograma de Guardias ' + anioActual;
             titulo.style.cssText = `
@@ -182,27 +182,41 @@
                 color: ${getComputedStyle(document.body).color};
                 font-family: ${getComputedStyle(document.body).fontFamily};
             `;
-            
+
+            const tablaClone = elemento.cloneNode(true);
+            const anchoTabla = elemento.scrollWidth || elemento.offsetWidth;
+            const altoTabla = elemento.scrollHeight || elemento.offsetHeight;
+            tablaClone.style.overflow = 'visible';
+            tablaClone.style.width = `${anchoTabla}px`;
+            tablaClone.style.maxWidth = 'none';
+
             wrapper.appendChild(titulo);
-            wrapper.appendChild(elemento.cloneNode(true));
+            wrapper.appendChild(tablaClone);
             document.body.appendChild(wrapper);
-            
+
+            const anchoWrapper = wrapper.scrollWidth;
+            const altoWrapper = wrapper.scrollHeight;
+
             html2canvas(wrapper, {
                 backgroundColor: getComputedStyle(document.body).backgroundColor,
-                scale: 2
+                scale: 2,
+                width: anchoWrapper,
+                height: altoWrapper,
+                windowWidth: anchoWrapper,
+                windowHeight: altoWrapper
             }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = 'cronograma-guardias-' + anioActual + '.png';
                 link.href = canvas.toDataURL();
                 link.click();
-                
+
                 document.body.removeChild(wrapper);
-                
+
                 btnDownload.textContent = 'Descargar calendario';
                 btnDownload.disabled = false;
             });
         }
     </script>
-    <script src="{{ url_for('static', filename='js/guardias.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/guardias.js') }}"></script>
 </body>
 </html>

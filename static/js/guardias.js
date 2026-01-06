@@ -14,20 +14,33 @@ document.addEventListener('DOMContentLoaded', function() {
 // ============================================
 // CARGAR PRONÓSTICO ASÍNCRONO AL INICIAR
 // ============================================
+function getClimaUrl(btn) {
+    if (btn && btn.dataset && btn.dataset.climaUrl) {
+        return btn.dataset.climaUrl;
+    }
+
+    const path = window.location.pathname || '';
+    return path.includes('/guardias') ? '/guardias/api/clima' : '/api/clima';
+}
+
 function cargarPronosticoAsincrono() {
     const btn = document.getElementById('btn-clima');
     if (!btn) return;
+
+    const climaUrl = getClimaUrl(btn);
 
     // Cambiar icono del botón a "cargando"
     btn.innerHTML = '<span class="btn-icon">⏳</span>';
     btn.disabled = true;
     btn.title = 'Cargando pronóstico...';
 
-    fetch('/guardias/api/clima')
+    fetch(climaUrl)
         .then(response => response.json())
         .then(data => {
             console.log('Respuesta del API:', data);
-            if (data.success) {
+            const tieneDatos = data && data.clima && Object.keys(data.clima).length > 0;
+
+            if (data.success && tieneDatos) {
                 aplicarPronostico(data.clima);
 
                 // Volver al icono original y ocultar el botón
@@ -85,17 +98,22 @@ function mostrarNotificacion(mensaje) {
 // ============================================
 function solicitarPronostico() {
     const btn = document.getElementById('btn-clima');
+    if (!btn) return;
+
+    const climaUrl = getClimaUrl(btn);
 
     btn.innerHTML = '<span class="btn-clima-text">⏳</span>';
     btn.disabled = true;
     btn.title = 'Cargando...';
     btn.style.opacity = '1';
 
-    fetch('/guardias/api/clima')
+    fetch(climaUrl)
         .then(response => response.json())
         .then(data => {
             console.log('Respuesta manual del API:', data);
-            if (data.success) {
+            const tieneDatos = data && data.clima && Object.keys(data.clima).length > 0;
+
+            if (data.success && tieneDatos) {
                 aplicarPronostico(data.clima);
                 btn.innerHTML = '<span class="btn-clima-text">✅ Cargado</span>';
                 btn.title = 'Pronóstico cargado';
@@ -149,16 +167,17 @@ function aplicarPronostico(climaData) {
         celdasEncontradas += celdas.length;
 
         // El API puede retornar string (solo emoji) o objeto {emoji, temp_max, temp_min}
-        let emoji, tempMax, tempMin;
+        let emoji;
+        let tempMax = null;
+        let tempMin = null;
+
         if (typeof climaInfo === 'string') {
             emoji = climaInfo;
-            tempMax = '';
-            tempMin = '';
             console.log(`Fecha ${fecha}: formato STRING, no hay temperaturas`);
         } else if (typeof climaInfo === 'object') {
             emoji = climaInfo.emoji;
-            tempMax = climaInfo.temp_max || '';
-            tempMin = climaInfo.temp_min || '';
+            tempMax = climaInfo.temp_max;
+            tempMin = climaInfo.temp_min;
             console.log(`Fecha ${fecha}: formato OBJETO, temp_max=${tempMax}, temp_min=${tempMin}`);
         } else {
             console.error(`Formato inesperado para fecha ${fecha}:`, climaInfo);
@@ -183,11 +202,30 @@ function aplicarPronostico(climaData) {
                 celda.appendChild(emojiSpan);
             }
             emojiSpan.textContent = emoji;
+
+            const maxVal = (tempMax !== null && tempMax !== undefined && tempMax !== '') ? Number(tempMax) : null;
+            const minVal = (tempMin !== null && tempMin !== undefined && tempMin !== '') ? Number(tempMin) : null;
+            let tempAvg = null;
+
+            if (Number.isFinite(maxVal) && Number.isFinite(minVal)) {
+                tempAvg = Math.round((maxVal + minVal) / 2);
+            } else if (Number.isFinite(maxVal)) {
+                tempAvg = Math.round(maxVal);
+            } else if (Number.isFinite(minVal)) {
+                tempAvg = Math.round(minVal);
+            }
+
+            const tempSpan = celda.querySelector('.clima-temp');
+            if (tempSpan) {
+                tempSpan.remove();
+            }
+
             celdasActualizadas++;
 
             // Guardar datos de temperatura en el elemento
-            celda.setAttribute('data-temp-max', tempMax);
-            celda.setAttribute('data-temp-min', tempMin);
+            celda.setAttribute('data-temp-max', tempMax ?? '');
+            celda.setAttribute('data-temp-min', tempMin ?? '');
+            celda.setAttribute('data-temp-avg', tempAvg ?? '');
 
             // Guardar info para tooltip personalizado
             celda.setAttribute('data-clima-emoji', emoji);
@@ -209,8 +247,7 @@ function mostrarTooltipClima(event) {
     const celda = event.currentTarget;
     const guardia = celda.getAttribute('data-guardia');
     const emoji = celda.getAttribute('data-clima-emoji');
-    const tempMax = celda.getAttribute('data-temp-max');
-    const tempMin = celda.getAttribute('data-temp-min');
+    const tempAvg = celda.getAttribute('data-temp-avg');
 
     // Crear tooltip
     const tooltip = document.createElement('div');
@@ -220,8 +257,8 @@ function mostrarTooltipClima(event) {
     let contenido = `<div class="tooltip-guardia-name">${guardia}</div>`;
     contenido += `<div class="tooltip-clima-emoji">${emoji}</div>`;
 
-    if (tempMax && tempMin && tempMax !== 'null' && tempMin !== 'null') {
-        contenido += `<div class="tooltip-temps">↑ ${tempMax}°C / ↓ ${tempMin}°C</div>`;
+    if (tempAvg && tempAvg !== 'null' && tempAvg !== '') {
+        contenido += `<div class="tooltip-temps">Temp. media: ${tempAvg}°C</div>`;
     }
 
     tooltip.innerHTML = contenido;

@@ -17,6 +17,7 @@ COPY templates/ templates/
 COPY static/css/guardias.min.css static/css/
 COPY static/css/guardias.css static/css/
 COPY static/js/guardias.min.js static/js/
+COPY static/js/guardias.js static/js/
 COPY static/img/ static/img/
 
 # Exponer el puerto

@@ -569,6 +569,7 @@ def ver_anio(anio):
                          feriados_por_guardia=calendario_data['feriados_por_guardia'],
                          hoy=calendario_data['hoy'])
 
+@app.route('/guardias/api/clima')
 @app.route('/api/clima')
 def obtener_clima():
     """Endpoint API para obtener pronóstico del clima bajo demanda"""
