@@ -15,6 +15,7 @@ COPY app.py wsgi.py config.py constants.py ./
 # Copiar templates y static (minified)
 COPY templates/ templates/
 COPY static/css/guardias.min.css static/css/
+COPY static/css/guardias.css static/css/
 COPY static/js/guardias.min.js static/js/
 COPY static/img/ static/img/
 

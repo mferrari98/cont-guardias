@@ -5,30 +5,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cronograma de Guardias</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='b' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' style='stop-color:%23A8A4FF'/><stop offset='100%25' style='stop-color:%238B7FFF'/></linearGradient><linearGradient id='l' x1='0%25' y1='0%25' x2='0%25' y2='100%25'><stop offset='0%25' style='stop-color:%23FFFFFF'/><stop offset='100%25' style='stop-color:%23F0F0FF;stop-opacity:0.95'/></linearGradient></defs><circle cx='32' cy='32' r='30' fill='url(%23b)'/><circle cx='32' cy='32' r='30' fill='none' stroke='rgba(255,255,255,0.2)' stroke-width='1'/><path d='M 24 18 L 24 46 L 28 46 L 28 34 L 38 34 C 42 34 45 31 45 27 C 45 23 42 20 38 20 L 28 20 L 28 18 Z M 28 24 L 37 24 C 39.5 24 41 25.5 41 27 C 41 28.5 39.5 30 37 30 L 28 30 Z' fill='url(%23l)' stroke='rgba(139,127,255,0.3)' stroke-width='0.5'/></svg>">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/guardias.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/guardias.css') }}">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
 </head>
 <body>
     <div class="container">
-        <!-- Header con Toggle -->
-        <header>
-            <div>
-                <h1>Cronograma guardias {{ anio }}</h1>
+        <!-- Top bar estilo portal -->
+        <div class="topbar">
+            <div class="topbar-inner">
+                <div class="topbar-left">
+                    <div class="brand-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 3l7 4v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V7l7-4z" />
+                        </svg>
+                    </div>
+                    <span class="brand-name">Telecomunicaciones y Automatismos</span>
+                </div>
+                <div class="topbar-right">
+                    <div class="theme-toggle-fixed">
+                        <input type="checkbox" id="theme-checkbox" class="theme-checkbox">
+                        <label for="theme-checkbox" class="theme-label" aria-label="Cambiar tema">
+                            <svg class="theme-icon sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="4" />
+                                <path d="M12 2v2" />
+                                <path d="M12 20v2" />
+                                <path d="m4.93 4.93 1.41 1.41" />
+                                <path d="m17.66 17.66 1.41 1.41" />
+                                <path d="M2 12h2" />
+                                <path d="M20 12h2" />
+                                <path d="m6.34 17.66-1.41 1.41" />
+                                <path d="m19.07 4.93-1.41 1.41" />
+                            </svg>
+                            <svg class="theme-icon moon-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z" />
+                            </svg>
+                            <div class="theme-ball"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Header principal -->
+        <header class="page-header">
+            <div class="page-title">
+                <h1>Cronograma de guardias</h1>
                 <p class="info-subtitle">
                     Internos: 2207 (Calandra), 2234 (Comunicaciones)
                 </p>
-            </div>
-
-            <!-- Toggle alineado con el título -->
-            <div class="theme-toggle-fixed">
-                <input type="checkbox" id="theme-checkbox" class="theme-checkbox">
-                <label for="theme-checkbox" class="theme-label">
-                    <img src="{{ url_for('static', filename='img/sun-icon.svg') }}" alt="Modo claro" class="theme-icon sun-icon">
-                    <svg class="theme-icon moon-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                    </svg>
-                    <div class="theme-ball"></div>
-                </label>
             </div>
         </header>
 
@@ -47,8 +71,8 @@
                 <div class="leyenda-item"
                      data-guardia="{{ guardia }}"
                      data-feriados="{{ feriados_por_guardia[guardia] }}"
-                     style="background-color: {{ colores[guardia] }}; color: #000;">
-                    {{ guardia }}
+                     style="--guardia-color: {{ colores[guardia] }};">
+                    <span class="leyenda-label">{{ guardia }}</span>
                 </div>
                 {% endfor %}
             </div>
@@ -63,11 +87,11 @@
                 {% endif %}
                 </div>
             </div>
-        </div>  
-	</header>
-                   
-            <!-- Tabla única con todo el año -->
+        </div>
+
+        <!-- Tabla única con todo el año -->
         <div id="calendario-captura" class="tabla-anual">
+
             <table class="calendario-completo">
                 <thead>
                     <tr>
@@ -111,26 +135,20 @@
         <div class="controles-wrapper">
             <div class="controles">
                 <button onclick="cambiarAnio(-1)">← {{ anio - 1 }}</button>
-                <button style="border-color: var(--accent); color: var(--accent);">{{ anio }}</button>
+                <button style="border-color: var(--accent-primary); color: var(--accent-primary);">{{ anio }}</button>
                 <button onclick="cambiarAnio(1)">{{ anio + 1 }} →</button>
             </div>
             <button class="btn-download" onclick="descargarCalendario()">
-                📥 Descargar calendario
+                Descargar calendario
             </button>
         </div>
 
-        <!-- Footer idéntico al monitor -->
-        <footer>
-            <button class="btn-portal" onclick="window.history.back()">
+        <div class="bottom-actions">
+            <button class="btn-portal" onclick="window.history.back()" type="button">
                 ← Volver
             </button>
-            <div class="dots">
-                <span class="dot"></span>
-                <span class="dot"></span>
-                <span class="dot"></span>
-            </div>
-            <div class="footer-text">Telecomunicaciones y Automatismos</div>
-        </footer>
+        </div>
+
     </div>
 <script>
         // Pasar datos de Python a JavaScript
@@ -146,7 +164,7 @@
             const elemento = document.getElementById('calendario-captura');
             const btnDownload = document.querySelector('.btn-download');
             
-            btnDownload.textContent = '⏳ Generando...';
+            btnDownload.textContent = 'Generando...';
             btnDownload.disabled = true;
             
             const wrapper = document.createElement('div');
@@ -180,7 +198,7 @@
                 
                 document.body.removeChild(wrapper);
                 
-                btnDownload.textContent = '📥 Descargar calendario';
+                btnDownload.textContent = 'Descargar calendario';
                 btnDownload.disabled = false;
             });
         }
