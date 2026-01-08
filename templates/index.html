@@ -60,7 +60,7 @@
         <div class="leyenda-info-row">
             <!-- Grupo 1: Botón pronóstico (izquierda) -->
             <div class="grupo-izquierda">
-                <button id="btn-clima" class="btn-clima-rect" onclick="solicitarPronostico()" title="Cargar pronóstico del tiempo" data-clima-url="{{ url_for('obtener_clima') }}">
+                <button id="btn-clima" class="btn-clima-rect" title="Cargar pronóstico del tiempo" data-clima-url="{{ url_for('obtener_clima') }}">
                     <span class="btn-clima-text">Solicitar Pronóstico</span>
                 </button>
             </div>
@@ -90,7 +90,7 @@
         </div>
 
         <!-- Tabla única con todo el año -->
-        <div id="calendario-captura" class="tabla-anual">
+        <div id="calendario-captura" class="tabla-anual" data-anio="{{ anio }}">
 
             <table class="calendario-completo">
                 <thead>
@@ -134,89 +134,22 @@
         <!-- Controles de navegación con botón de descarga -->
         <div class="controles-wrapper">
             <div class="controles">
-                <button onclick="cambiarAnio(-1)">← {{ anio - 1 }}</button>
-                <button style="border-color: var(--accent-primary); color: var(--accent-primary);">{{ anio }}</button>
-                <button onclick="cambiarAnio(1)">{{ anio + 1 }} →</button>
+                <button class="btn-year-nav" data-year-delta="-1" type="button">← {{ anio - 1 }}</button>
+                <button class="btn-year-current" type="button" style="border-color: var(--accent-primary); color: var(--accent-primary);">{{ anio }}</button>
+                <button class="btn-year-nav" data-year-delta="1" type="button">{{ anio + 1 }} →</button>
             </div>
-            <button class="btn-download" onclick="descargarCalendario()">
+            <button id="btn-download" class="btn-download" type="button">
                 Descargar calendario
             </button>
         </div>
 
         <div class="bottom-actions">
-            <button class="btn-portal" onclick="window.history.back()" type="button">
+            <button id="btn-back" class="btn-portal" type="button">
                 ← Volver
             </button>
         </div>
 
     </div>
-<script>
-        // Pasar datos de Python a JavaScript
-        const feriadosPorGuardia = {{ feriados_por_guardia|tojson }};
-        const anioActual = {{ anio }};
-        
-        function cambiarAnio(delta) {
-            window.location.href = '/guardias/anio/' + (anioActual + delta);
-        }
-
-
-        function descargarCalendario() {
-            const elemento = document.getElementById('calendario-captura');
-            const btnDownload = document.querySelector('.btn-download');
-
-            btnDownload.textContent = 'Generando...';
-            btnDownload.disabled = true;
-
-            const wrapper = document.createElement('div');
-            wrapper.style.cssText = `
-                background: ${getComputedStyle(elemento).backgroundColor};
-                padding: 20px;
-                display: inline-block;
-            `;
-
-            const titulo = document.createElement('h2');
-            titulo.textContent = 'Cronograma de Guardias ' + anioActual;
-            titulo.style.cssText = `
-                text-align: center;
-                margin-bottom: 15px;
-                color: ${getComputedStyle(document.body).color};
-                font-family: ${getComputedStyle(document.body).fontFamily};
-            `;
-
-            const tablaClone = elemento.cloneNode(true);
-            const anchoTabla = elemento.scrollWidth || elemento.offsetWidth;
-            const altoTabla = elemento.scrollHeight || elemento.offsetHeight;
-            tablaClone.style.overflow = 'visible';
-            tablaClone.style.width = `${anchoTabla}px`;
-            tablaClone.style.maxWidth = 'none';
-
-            wrapper.appendChild(titulo);
-            wrapper.appendChild(tablaClone);
-            document.body.appendChild(wrapper);
-
-            const anchoWrapper = wrapper.scrollWidth;
-            const altoWrapper = wrapper.scrollHeight;
-
-            html2canvas(wrapper, {
-                backgroundColor: getComputedStyle(document.body).backgroundColor,
-                scale: 2,
-                width: anchoWrapper,
-                height: altoWrapper,
-                windowWidth: anchoWrapper,
-                windowHeight: altoWrapper
-            }).then(canvas => {
-                const link = document.createElement('a');
-                link.download = 'cronograma-guardias-' + anioActual + '.png';
-                link.href = canvas.toDataURL();
-                link.click();
-
-                document.body.removeChild(wrapper);
-
-                btnDownload.textContent = 'Descargar calendario';
-                btnDownload.disabled = false;
-            });
-        }
-    </script>
     <script src="{{ url_for('static', filename='js/guardias.js') }}"></script>
 </body>
 </html>

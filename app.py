@@ -244,7 +244,7 @@ app.config['APPLICATION_ROOT'] = '/guardias'
 
 CSP_POLICY = (
     "default-src 'self'; "
-    "script-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; "
+    "script-src 'self' https://cdnjs.cloudflare.com; "
     "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data: blob:; "
     "font-src 'self' data:; "

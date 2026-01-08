@@ -6,10 +6,118 @@ document.addEventListener('DOMContentLoaded', function() {
     highlightToday();
     // aplicarDegradadoGuardiaActual(); // ELIMINADO: ya no mostramos días restantes
     initLeyendaFilter();
+    initControls();
 
     // NO cargar pronóstico automáticamente
     // El usuario debe hacer click en el botón
 });
+
+// ============================================
+// CONTROLES Y DATOS DE PAGINA
+// ============================================
+function getAnioActual() {
+    const calendario = document.getElementById('calendario-captura');
+    const anioValue = calendario ? calendario.getAttribute('data-anio') : '';
+    const anio = anioValue ? Number(anioValue) : NaN;
+    return Number.isFinite(anio) ? anio : new Date().getFullYear();
+}
+
+function initControls() {
+    const btnClima = document.getElementById('btn-clima');
+    if (btnClima) {
+        btnClima.addEventListener('click', solicitarPronostico);
+    }
+
+    const yearButtons = document.querySelectorAll('[data-year-delta]');
+    yearButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const deltaValue = button.getAttribute('data-year-delta') || '0';
+            const delta = Number(deltaValue);
+            if (!Number.isFinite(delta)) {
+                return;
+            }
+            cambiarAnio(delta);
+        });
+    });
+
+    const btnDownload = document.getElementById('btn-download');
+    if (btnDownload) {
+        btnDownload.addEventListener('click', descargarCalendario);
+    }
+
+    const btnBack = document.getElementById('btn-back');
+    if (btnBack) {
+        btnBack.addEventListener('click', () => window.history.back());
+    }
+}
+
+function cambiarAnio(delta) {
+    const anioActual = getAnioActual();
+    window.location.href = '/guardias/anio/' + (anioActual + delta);
+}
+
+function descargarCalendario() {
+    const elemento = document.getElementById('calendario-captura');
+    const btnDownload = document.getElementById('btn-download');
+
+    if (!elemento || !btnDownload) {
+        return;
+    }
+
+    const anioActual = getAnioActual();
+
+    btnDownload.textContent = 'Generando...';
+    btnDownload.disabled = true;
+
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = `
+        background: ${getComputedStyle(elemento).backgroundColor};
+        padding: 20px;
+        display: inline-block;
+    `;
+
+    const titulo = document.createElement('h2');
+    titulo.textContent = 'Cronograma de Guardias ' + anioActual;
+    titulo.style.cssText = `
+        text-align: center;
+        margin-bottom: 15px;
+        color: ${getComputedStyle(document.body).color};
+        font-family: ${getComputedStyle(document.body).fontFamily};
+    `;
+
+    const tablaClone = elemento.cloneNode(true);
+    const anchoTabla = elemento.scrollWidth || elemento.offsetWidth;
+    const altoTabla = elemento.scrollHeight || elemento.offsetHeight;
+    tablaClone.style.overflow = 'visible';
+    tablaClone.style.width = `${anchoTabla}px`;
+    tablaClone.style.maxWidth = 'none';
+
+    wrapper.appendChild(titulo);
+    wrapper.appendChild(tablaClone);
+    document.body.appendChild(wrapper);
+
+    const anchoWrapper = wrapper.scrollWidth;
+    const altoWrapper = wrapper.scrollHeight;
+
+    html2canvas(wrapper, {
+        backgroundColor: getComputedStyle(document.body).backgroundColor,
+        scale: 2,
+        width: anchoWrapper,
+        height: altoWrapper,
+        windowWidth: anchoWrapper,
+        windowHeight: altoWrapper
+    }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = 'cronograma-guardias-' + anioActual + '.png';
+        link.href = canvas.toDataURL();
+        link.click();
+
+        document.body.removeChild(wrapper);
+
+        btnDownload.textContent = 'Descargar calendario';
+        btnDownload.disabled = false;
+    });
+}
 
 // ============================================
 // CARGAR PRONÓSTICO ASÍNCRONO AL INICIAR
