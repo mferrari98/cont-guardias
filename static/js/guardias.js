@@ -394,25 +394,54 @@ function initTheme() {
     const themeCheckbox = document.getElementById('theme-checkbox');
     const html = document.documentElement;
 
-    // Cargar tema guardado o usar dark por defecto
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    html.setAttribute('data-theme', savedTheme);
+    const THEME_STORAGE_KEY = 'portal_theme';
+    const LEGACY_THEME_STORAGE_KEY = 'theme';
 
-    // Sincronizar checkbox con el tema
-    if (savedTheme === 'light') {
-        themeCheckbox.checked = false;
-    } else {
-        themeCheckbox.checked = true;
-    }
+    const applyTheme = (value) => {
+        const nextTheme = value === 'light' ? 'light' : 'dark';
+        html.setAttribute('data-theme', nextTheme);
+        if (themeCheckbox) {
+            themeCheckbox.checked = nextTheme === 'dark';
+        }
+        return nextTheme;
+    };
+
+    const persistTheme = (value) => {
+        localStorage.setItem(THEME_STORAGE_KEY, value);
+        localStorage.setItem(LEGACY_THEME_STORAGE_KEY, value);
+        window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: value } }));
+    };
+
+    // Cargar tema guardado o usar dark por defecto
+    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY)
+        || localStorage.getItem(LEGACY_THEME_STORAGE_KEY)
+        || 'dark';
+    const appliedTheme = applyTheme(savedTheme);
+    persistTheme(appliedTheme);
 
     // Listener para cambios
     if (themeCheckbox) {
         themeCheckbox.addEventListener('change', function() {
             const newTheme = this.checked ? 'dark' : 'light';
-            html.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
+            const updatedTheme = applyTheme(newTheme);
+            persistTheme(updatedTheme);
         });
     }
+
+    window.addEventListener('storage', function(event) {
+        if (event.key === THEME_STORAGE_KEY || event.key === LEGACY_THEME_STORAGE_KEY) {
+            if (event.newValue) {
+                applyTheme(event.newValue);
+            }
+        }
+    });
+
+    window.addEventListener('themeChanged', function(event) {
+        const customEvent = event;
+        if (customEvent.detail && customEvent.detail.theme) {
+            applyTheme(customEvent.detail.theme);
+        }
+    });
 }
 
 // ============================================
