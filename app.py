@@ -271,7 +271,13 @@ def set_security_headers(response):
 
 def require_admin_token():
     if not ADMIN_API_TOKEN:
-        return None
+        if DEBUG:
+            return None
+        return jsonify({
+            'success': False,
+            'error': 'unauthorized',
+            'message': 'ADMIN_API_TOKEN no configurado'
+        }), 503
 
     token = request.headers.get('X-Admin-Token', '')
     if token != ADMIN_API_TOKEN:

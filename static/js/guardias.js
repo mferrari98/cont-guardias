@@ -44,11 +44,6 @@ function initControls() {
     if (btnDownload) {
         btnDownload.addEventListener('click', descargarCalendario);
     }
-
-    const btnBack = document.getElementById('btn-back');
-    if (btnBack) {
-        btnBack.addEventListener('click', () => window.history.back());
-    }
 }
 
 function cambiarAnio(delta) {
