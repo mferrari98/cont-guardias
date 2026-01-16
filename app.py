@@ -93,31 +93,6 @@ class CalendarioCache:
                     del self.cache[evicted]
                     logger.info(f"[CACHE EVICT] Año {evicted} eliminado para mantener tamaño máximo")
 
-    def invalidate(self, anio=None):
-        """Invalidar caché de un año específico o todo el caché"""
-        with self.lock:
-            if anio is not None:
-                if anio in self.cache:
-                    del self.cache[anio]
-                    logger.info(f"[CACHE INVALIDATE] Año {anio} eliminado del caché")
-            else:
-                self.cache = {}
-                logger.info("[CACHE INVALIDATE] Todo el caché ha sido eliminado")
-
-    def get_stats(self):
-        """Obtener estadísticas del caché"""
-        with self.lock:
-            total_requests = self.total_hits + self.total_misses
-            hit_rate = (self.total_hits / total_requests * 100) if total_requests > 0 else 0
-
-            return {
-                'hits': self.total_hits,
-                'misses': self.total_misses,
-                'hit_rate': round(hit_rate, 2),
-                'cache_size': len(self.cache),
-                'max_items': CALENDARIO_CACHE_MAX_ITEMS,
-                'cached_years': list(self.cache.keys())
-            }
 
 # Instancia global del caché
 calendario_cache = CalendarioCache()
@@ -268,26 +243,6 @@ def set_security_headers(response):
 
     return response
 
-
-def require_admin_token():
-    if not ADMIN_API_TOKEN:
-        if DEBUG:
-            return None
-        return jsonify({
-            'success': False,
-            'error': 'unauthorized',
-            'message': 'ADMIN_API_TOKEN no configurado'
-        }), 503
-
-    token = request.headers.get('X-Admin-Token', '')
-    if token != ADMIN_API_TOKEN:
-        return jsonify({
-            'success': False,
-            'error': 'unauthorized',
-            'message': 'Invalid admin token'
-        }), 401
-
-    return None
 
 # Mapeo de códigos WMO a emojis de clima
 WEATHER_EMOJI = CLIMA_EMOJIS
@@ -609,33 +564,6 @@ def obtener_clima():
             'success': False,
             'error': str(e)
         }), 500
-
-@app.route('/api/cache/stats')
-def cache_stats():
-    """Endpoint para ver estadísticas del caché"""
-    auth_error = require_admin_token()
-    if auth_error:
-        return auth_error
-
-    stats = calendario_cache.get_stats()
-    return jsonify({
-        'success': True,
-        'stats': stats,
-        'timestamp': datetime.now().isoformat()
-    })
-
-@app.route('/api/cache/invalidate', methods=['POST'])
-def cache_invalidate():
-    """Endpoint para invalidar el caché (útil para desarrollo)"""
-    auth_error = require_admin_token()
-    if auth_error:
-        return auth_error
-
-    calendario_cache.invalidate()
-    return jsonify({
-        'success': True,
-        'message': 'Caché invalidado completamente'
-    })
 
 if __name__ == '__main__':
     app.run(debug=DEBUG)

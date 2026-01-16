@@ -29,7 +29,6 @@ except ValueError:
 DURACION_GUARDIA = 14  # Días por guardia
 DEFAULT_SECRET_KEY = 'sistema-guardias-rotativas-2025-defecto'
 SECRET_KEY = os.getenv('SECRET_KEY', DEFAULT_SECRET_KEY)  # Clave configurable
-ADMIN_API_TOKEN = os.getenv('ADMIN_API_TOKEN', '')  # Token opcional para endpoints admin
 DEBUG = os.getenv('DEBUG', 'false').lower() == 'true'
 HOST = '0.0.0.0'
 PORT = 5000
