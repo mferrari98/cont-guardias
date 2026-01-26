@@ -218,7 +218,7 @@ body {
     color: var(--accent-primary);
     margin-top: 8px;
     margin-bottom: 0;
-    font-weight: 500;
+    font-weight: 400;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -287,7 +287,7 @@ body {
 
 .leyenda-info-row {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: auto 1fr auto;
     align-items: center;
     gap: var(--space-md);
     margin: 0 auto var(--space-md);
@@ -386,8 +386,8 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: var(--space-sm);
-    flex-wrap: wrap;
+    gap: 2px;
+    flex-wrap: nowrap;
 }
 
 .leyenda-item {
