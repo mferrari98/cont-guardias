@@ -74,20 +74,53 @@ function descargarCalendario() {
     const titulo = document.createElement('h2');
     titulo.textContent = 'Cronograma de Guardias ' + anioActual;
     titulo.style.cssText = `
-        text-align: center;
-        margin-bottom: 15px;
+        text-align: right;
         color: ${getComputedStyle(document.body).color};
         font-family: ${getComputedStyle(document.body).fontFamily};
+        margin: 0;
+        white-space: nowrap;
+    `;
+
+    const leyenda = document.querySelector('.leyenda');
+    let leyendaWrapper = null;
+    if (leyenda) {
+        const leyendaClone = leyenda.cloneNode(true);
+        leyendaWrapper = document.createElement('div');
+        leyendaWrapper.style.cssText = `
+            display: flex;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-left: auto;
+        `;
+        leyendaWrapper.appendChild(leyendaClone);
+    }
+
+    const headerRow = document.createElement('div');
+    headerRow.style.cssText = `
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 12px;
+        width: 100%;
     `;
 
     const tablaClone = elemento.cloneNode(true);
+    tablaClone.querySelectorAll('.today').forEach((celda) => {
+        celda.classList.remove('today');
+    });
     const anchoTabla = elemento.scrollWidth || elemento.offsetWidth;
     const altoTabla = elemento.scrollHeight || elemento.offsetHeight;
     tablaClone.style.overflow = 'visible';
     tablaClone.style.width = `${anchoTabla}px`;
     tablaClone.style.maxWidth = 'none';
 
-    wrapper.appendChild(titulo);
+    headerRow.appendChild(titulo);
+    if (leyendaWrapper) {
+        headerRow.appendChild(leyendaWrapper);
+    }
+    wrapper.appendChild(headerRow);
     wrapper.appendChild(tablaClone);
     document.body.appendChild(wrapper);
 

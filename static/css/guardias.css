@@ -407,19 +407,22 @@ body {
     align-items: center;
     gap: 2px;
     flex-wrap: nowrap;
+    margin-left: 125px;
 }
 
 .leyenda-item {
     position: relative;
     display: inline-flex;
     align-items: center;
-    padding: 10px 16px 10px 32px;
+    justify-content: center;
+    text-align: center;
+    padding: 10px 16px;
     border-radius: var(--radius-card);
     font-weight: 600;
     font-size: clamp(13px, 1.2vw, 15px);
-    border: 1px solid var(--border-medium);
-    background: var(--bg-card);
-    color: var(--text-primary);
+    border: 1px solid var(--guardia-color);
+    background: var(--guardia-color);
+    color: #111111;
     cursor: pointer;
     transition: all 0.3s ease-out;
     box-shadow: var(--shadow-sm);
@@ -433,16 +436,7 @@ body {
 
 
 .leyenda-item::before {
-    content: '';
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    width: 6px;
-    height: 18px;
-    border-radius: 999px;
-    background: var(--guardia-color);
-    transform: translateY(-50%);
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+    content: none;
 }
 
 .leyenda-item:hover {
