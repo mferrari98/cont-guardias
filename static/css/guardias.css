@@ -33,6 +33,7 @@
     --border-medium: rgba(229, 228, 224, 0.12);
     --border-strong: rgba(229, 228, 224, 0.2);
     --border-hover: #2A2A28;
+    --portal-border: #1F1E1D;
 
     /* === SOMBRAS === */
     --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.35);
@@ -87,6 +88,7 @@
     --border-medium: rgba(20, 20, 19, 0.12);
     --border-strong: rgba(20, 20, 19, 0.2);
     --border-hover: #CBD5E1;
+    --portal-border: #E2E8F0;
 
     --shadow-sm: 0 1px 4px rgba(15, 23, 42, 0.06);
     --shadow-md: 0 6px 16px rgba(15, 23, 42, 0.12);
@@ -161,7 +163,7 @@ body {
     height: 32px;
     border-radius: 6px;
     background: var(--bg-card);
-    border: 1px solid var(--border-medium);
+    border: 1px solid var(--portal-border);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -224,7 +226,7 @@ body {
 }
 
 .page-header h1 {
-    font-size: clamp(36px, 4.5vw, 48px);
+    font-size: clamp(32px, 4vw, 36px);
     font-weight: 700;
     margin-bottom: 8px;
     letter-spacing: -0.5px;
@@ -809,14 +811,14 @@ footer .dots {
 .btn-portal {
     height: 32px;
     padding: 0 12px;
-    background: var(--bg-card);
+    background: var(--bg-outer);
     color: var(--text-primary);
-    border: 2px solid var(--border-medium);
+    border: 2px solid var(--portal-border);
     border-radius: var(--radius-sm);
     cursor: pointer;
     font-size: 0.875rem;
     font-weight: 600;
-    transition: opacity var(--transition-normal);
+    transition: background var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
     text-decoration: none;
     display: inline-flex;
     align-items: center;
@@ -824,7 +826,7 @@ footer .dots {
 }
 
 .btn-portal:hover {
-    opacity: 0.8;
+    background: var(--bg-card-hover);
 }
 
 .btn-portal-icon {
